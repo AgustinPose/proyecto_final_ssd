@@ -35,15 +35,18 @@ public class SyncClient implements AutoCloseable {
         long size = Files.size(file);
         send(new Protocol.UploadRequest(relative, size, remoteModified));
         byte[] buffer = new byte[FileUtils.BUFFER_SIZE];
+        ProgressBar progress = new ProgressBar("Subiendo " + relative, size);
         try (java.io.InputStream input = Files.newInputStream(file)) {
             int count;
             while ((count = input.read(buffer)) != -1) {
                 byte[] block = java.util.Arrays.copyOf(buffer, count);
                 send(new Protocol.FileChunk(block));
+                progress.advance(count);
             }
         }
         send(new Protocol.TransferComplete());
         Protocol.Ack ack = expect(Protocol.Ack.class);
+        progress.finish();
         System.out.println(ack.text);
     }
 
@@ -54,6 +57,7 @@ public class SyncClient implements AutoCloseable {
         Path temporary = Files.createTempFile(localFile.getParent(), "download-", ".part");
         boolean completed = false;
         long received = 0;
+        ProgressBar progress = new ProgressBar("Descargando " + relative, info.size);
         try {
             while (true) {
                 Object item = in.readObject();
@@ -64,6 +68,7 @@ public class SyncClient implements AutoCloseable {
                 received += data.length;
                 if (received > info.size) throw new IOException("Tamaño recibido superior al esperado");
                 Files.write(temporary, data, StandardOpenOption.APPEND);
+                progress.advance(data.length);
             }
             if (received != info.size) throw new IOException("Descarga incompleta: " + received + "/" + info.size);
             try {
@@ -74,6 +79,7 @@ public class SyncClient implements AutoCloseable {
             }
             FileUtils.setModified(localFile, info.modified);
             completed = true;
+            progress.finish();
             System.out.println("Archivo descargado: " + relative);
         } finally {
             if (!completed) Files.deleteIfExists(temporary);
@@ -116,6 +122,56 @@ public class SyncClient implements AutoCloseable {
     public void close() throws IOException {
         try { in.close(); } finally {
             try { out.close(); } finally { socket.close(); }
+        }
+    }
+
+    /** Muestra el progreso sin inundar la terminal con una línea por bloque. */
+    private static final class ProgressBar {
+        private static final int WIDTH = 30;
+        private static final long RENDER_INTERVAL_NANOS = 100_000_000L;
+
+        private final String label;
+        private final long total;
+        private long transferred;
+        private long lastRender;
+
+        private ProgressBar(String label, long total) {
+            this.label = label;
+            this.total = total;
+        }
+
+        private void advance(long bytes) {
+            transferred += bytes;
+            long now = System.nanoTime();
+            if (now - lastRender >= RENDER_INTERVAL_NANOS || transferred == total) {
+                render();
+                lastRender = now;
+            }
+        }
+
+        private void finish() {
+            render();
+            System.out.println();
+        }
+
+        private void render() {
+            int percent = total == 0 ? 100 : (int) Math.min(100, transferred * 100 / total);
+            int filled = percent * WIDTH / 100;
+            String bar = "#".repeat(filled) + "-".repeat(WIDTH - filled);
+            System.out.printf("\r%s: [%s] %3d%% (%s / %s)", label, bar, percent,
+                    formatBytes(transferred), formatBytes(total));
+            System.out.flush();
+        }
+
+        private static String formatBytes(long bytes) {
+            String[] units = {"B", "KB", "MB", "GB", "TB"};
+            double value = bytes;
+            int unit = 0;
+            while (value >= 1024 && unit < units.length - 1) {
+                value /= 1024;
+                unit++;
+            }
+            return unit == 0 ? bytes + " " + units[unit] : String.format("%.2f %s", value, units[unit]);
         }
     }
 }
