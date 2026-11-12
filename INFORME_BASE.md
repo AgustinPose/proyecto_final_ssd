@@ -23,6 +23,7 @@ Las transferencias se realizan en bloques de 64 KiB para no cargar archivos comp
 ### Gestión de archivos y sincronización
 - `FileUtils`: recorre directorios, crea carpetas, resuelve rutas seguras y calcula hashes SHA-256 leyendo por bloques.
 - `SyncEngine`: obtiene los listados, calcula los conjuntos de archivos locales, remotos y comunes, compara hashes y decide qué versión conservar.
+- `SyncWatcher`: monitoriza recursivamente la carpeta local mediante `WatchService` y solicita una nueva sincronización cuando detecta cambios.
 - `MainClient`: interpreta los parámetros y arranca la sincronización.
 - `SyncServer` también dispone de `main` para arrancar el servidor.
 
@@ -72,6 +73,14 @@ java MainClient IP_DEL_SERVIDOR 8080 carpeta_local 5
 
 Para probar en el mismo ordenador, sustituir la IP por `localhost`. Para probar desde otro ordenador, abrir el puerto TCP seleccionado en el firewall del servidor y utilizar su IP o nombre DNS.
 
+Para mantener el cliente monitorizando la carpeta local después de la sincronización inicial:
+
+```bash
+java MainClient IP_DEL_SERVIDOR 8080 carpeta_local 5 --watch
+```
+
+El proceso se detiene con `Ctrl+C`.
+
 ## 8. Pruebas
 
 Registrar aquí las pruebas repetidas por el grupo, incluyendo fecha, sistema operativo, tamaño de archivos y resultado:
@@ -92,7 +101,7 @@ En una prueba local automatizada de desarrollo se verificó la subida de un arch
 
 ## 9. Limitaciones y trabajo adicional
 
-- La monitorización continua de la carpeta mediante `WatchService` no está implementada; el cliente sincroniza al ejecutarse.
+- La monitorización continua es opcional y se activa con el argumento `--watch`. El cliente realiza una sincronización inicial y vuelve a sincronizar cuando detecta un cambio local.
 - Se sincronizan archivos regulares y se crean las carpetas padre necesarias. No se preservan directorios vacíos.
 - El algoritmo de Cristian está integrado, pero debe probarse con retardo de red (`tc netem`) para documentar su comportamiento.
 - La resolución de conflictos se basa en fecha de modificación; si ambas versiones tienen la misma fecha ajustada y hashes diferentes, se descarga la copia remota.

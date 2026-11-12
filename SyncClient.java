@@ -150,7 +150,7 @@ public class SyncClient implements AutoCloseable {
         }
 
         private void finish() {
-            render();
+            if (transferred != total || total == 0) render();
             System.out.println();
         }
 

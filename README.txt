@@ -11,6 +11,11 @@ ARRANCAR EL SERVIDOR (en el ordenador que almacenará la copia remota)
 ARRANCAR EL CLIENTE (en el ordenador del usuario)
   java MainClient DIRECCION_IP_SERVIDOR 8080 carpeta_local 5
 
+MONITORIZAR CONTINUAMENTE LA CARPETA LOCAL (opcional)
+  java MainClient DIRECCION_IP_SERVIDOR 8080 carpeta_local 5 --watch
+  El cliente realiza una sincronización inicial y después vuelve a sincronizar
+  automáticamente cuando detecta cambios locales. Para detenerlo, pulsar Ctrl+C.
+
 El último argumento es el número de muestras para el algoritmo de Cristian.
 
 PRUEBA LOCAL
