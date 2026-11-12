@@ -1,0 +1,18 @@
+# Java build output
+*.class
+
+# Runtime folders created by the synchronization program
+/carpeta_local/
+/carpeta_remota/
+/servidor_files/
+
+# Partial files used while transferring data
+*.part
+
+# IDE and operating-system metadata
+.DS_Store
+.idea/
+*.iml
+out/
+build/
+target/
